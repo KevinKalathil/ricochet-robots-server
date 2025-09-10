@@ -39,10 +39,10 @@ def generate_unique_username():
 
 # Directions (dx, dy) and name
 DIRECTIONS = {
-    "Right": (1, 0),
-    "Left": (-1, 0),
-    "Up": (0, -1),
     "Down": (0, 1),
+    "Up": (0, -1),
+    "Left": (-1, 0),
+    "Right": (1, 0),
 }
 
 def is_blocked_by_wall(grid: List[List[int]], x: int, y: int, dx: int, dy: int) -> bool:
@@ -104,13 +104,13 @@ def encode_positions(positions: List[Tuple[int,int]]) -> Tuple[Tuple[int,int], .
 def solve_board(board: Dict, rows = 10, cols = 10) -> Optional[List[Dict]]:
     """
     BFS solver.
-    board: dict with keys: 'rows','cols','grid' (2D int list), 'robots' (list of [x,y]),
-           'target' (x,y)
-    Returns list of moves: [{ 'robot': i, 'dir': 'Right', 'to': [x,y] }, ...] or None.
+    board: dict with keys: 'rows','cols','grid' (2D int list), 'robots' (list of [y,x]),
+           'target' (y,x)
+    Returns list of moves: [{ 'robot': i, 'dir': 'Right', 'to': [y,x] }, ...] or None.
     """
     grid = board["grid"]
-    robots = [tuple(r) for r in board["robots"]]  # list of (x,y)
-    target = tuple(board["target"])               # (x,y)
+    robots = [tuple(r) for r in board["robots"]]  # list of (y, x)
+    target = tuple(board["target"])               # (y,x)
     num_robots = len(robots)
 
     # BFS queue: each node = (positions_list, moves_list)
@@ -187,14 +187,14 @@ def generate_board(rows=10, cols=10, num_robots=3, wall_prob=0.1):
         while True:
             rx, ry = random.randrange(cols), random.randrange(rows)
             if (rx, ry) not in robots:  # don't stack robots
-                robots.append((ry, rx)) # swapped these because column maps to x and row to y
+                robots.append((rx, ry))
                 break
 
     # Place target at least distance 3 from any robot
     while True:
         tx, ty = random.randrange(cols), random.randrange(rows)
-        if all(abs(tx - ry) + abs(ty - rx) >= 3 for (rx, ry) in robots):
-            target = (ty, tx) # swapped these because column maps to x and row to y
+        if all(abs(tx - rx) + abs(ty - ry) >= 3 for (rx, ry) in robots):
+            target = (tx, ty)
             break
 
     return {
@@ -262,6 +262,9 @@ def handle_join_game(data):
             solution = solve_board(board)
             if solution:  # non-empty solution found
                 break
+        
+        print("Generated board with solution:", solution)
+        print("Board:", board)
 
         socketio.emit("game_start", {
             "game_id": game.id,
