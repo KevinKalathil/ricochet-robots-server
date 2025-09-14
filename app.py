@@ -1,7 +1,7 @@
 import random
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from flask_socketio import SocketIO, emit, join_room, send
+from flask_socketio import SocketIO, emit, join_room, send, close_room
 from models import db, Player, Game, GameSession
 from collections import deque
 from typing import List, Tuple, Optional, Dict
@@ -297,6 +297,34 @@ def handle_move(data):
 @socketio.on("connect")
 def handle_connect():
     emit("server_msg", {"message": "Welcome!"})
+
+@socketio.on("leave_game")
+def handle_leave_game(data):
+    game_id = data.get("game_id")
+    username = data.get("username")
+    room = f"game_{game_id}"
+    print(f"{username} leaving game {game_id}, room {room}")
+    
+    # Announce to everyone still connected
+    emit("server_msg", {"message": f"{username} has left the game."}, room=room)
+
+    # End the game completely
+    game = db.session.get(Game, game_id)
+    if game:
+        db.session.delete(game)  # this should cascade delete sessions + players if you configure it
+        db.session.commit()
+
+    # Notify clients to clean up
+    emit("end_game", {"message": "Game ended due to player leaving."}, room=room)
+    close_room(room)
+
+
+
+
+@socketio.on("disconnect")
+def handle_disconnect(data):
+    print("Client disconnected")
+    emit("server_msg", {"message": f"A user has disconnected. {data}"}, broadcast=True)
 
 # ----------------------------
 # Run server
