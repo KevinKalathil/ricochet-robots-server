@@ -266,9 +266,16 @@ def handle_join_game(data):
         print("Generated board with solution:", solution)
         print("Board:", board)
 
+        second_username = None
+        for usernames in [p.player.username for p in game.players]:
+            if usernames != username:
+                second_username = usernames
+                break
+
         socketio.emit("game_start", {
             "game_id": game.id,
             "players": [p.player.username for p in game.players],
+            "second_username" : second_username,
             "board": board,
             "solution": solution
         }, room=room)
