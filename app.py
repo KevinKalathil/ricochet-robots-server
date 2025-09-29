@@ -1,5 +1,5 @@
 import random
-from flask import Flask
+from flask import Flask, session as flask_session
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room, send, close_room
 from models import db, Player, Game, GameSession
@@ -243,6 +243,10 @@ def handle_join_game(data):
     # 4️⃣ Join the socket room
     room = f"game_{game.id}"
     join_room(room)
+
+    flask_session["username"] = username
+    flask_session["game_id"] = game.id
+
     # send({"message": f"{username} joined the game!"}, to=room)
     emit("server_msg", {"message": f"{username} joined the game!"}, room=room)
 
@@ -266,11 +270,7 @@ def handle_join_game(data):
         print("Generated board with solution:", solution)
         print("Board:", board)
 
-        second_username = None
-        for usernames in [p.player.username for p in game.players]:
-            if usernames != username:
-                second_username = usernames
-                break
+        second_username = username
 
         socketio.emit("game_start", {
             "game_id": game.id,
@@ -325,12 +325,26 @@ def handle_leave_game(data):
     emit("end_game", {"message": "Game ended due to player leaving."}, room=room)
     close_room(room)
 
+@socketio.on("update_best_solution")
+def handle_update_best_solution(data):
+    username = data.get("username")
+    game_id = data.get("game_id")
+    currentSolutionLength = data.get("current_solution_length")
 
-
+    # Broadcast to all players in the game room
+    room = f"game_{game_id}"
+    emit("improved_solution_update", {
+        "username": username,
+        "current_solution_length": currentSolutionLength,
+    }, room=room)
 
 @socketio.on("disconnect")
 def handle_disconnect(data):
-    print("Client disconnected")
+    print(f"Client disconnected {data}")
+    handle_leave_game({
+        "game_id": flask_session.get("game_id"),
+        "username": flask_session.get("username")
+    })
     emit("server_msg", {"message": f"A user has disconnected. {data}"}, broadcast=True)
 
 # ----------------------------
