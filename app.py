@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 import random
 from flask import Flask, session as flask_session
 from flask_sqlalchemy import SQLAlchemy
